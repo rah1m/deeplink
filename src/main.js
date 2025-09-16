@@ -95,21 +95,38 @@ function getAdditionalDeviceInfo() {
   let browserName = "Unknown";
   let browserVersion = "Unknown";
 
-  if (nav.userAgent.indexOf("Chrome") > -1) {
+  // Check for Edge first (as it may contain Chrome in user agent)
+  if (nav.userAgent.indexOf("Edg/") > -1) {
+    browserName = "Edge";
+    const match = nav.userAgent.match(/Edg\/(\d+\.\d+)/);
+    if (match) browserVersion = match[1];
+  } else if (nav.userAgent.indexOf("Edge/") > -1) {
+    browserName = "Edge Legacy";
+    const match = nav.userAgent.match(/Edge\/(\d+\.\d+)/);
+    if (match) browserVersion = match[1];
+  }
+  // Check for Chrome (but not if it's Edge)
+  else if (
+    nav.userAgent.indexOf("Chrome") > -1 &&
+    nav.userAgent.indexOf("Edg") === -1
+  ) {
     browserName = "Chrome";
     const match = nav.userAgent.match(/Chrome\/(\d+\.\d+)/);
     if (match) browserVersion = match[1];
-  } else if (nav.userAgent.indexOf("Firefox") > -1) {
+  }
+  // Check for Firefox
+  else if (nav.userAgent.indexOf("Firefox") > -1) {
     browserName = "Firefox";
     const match = nav.userAgent.match(/Firefox\/(\d+\.\d+)/);
     if (match) browserVersion = match[1];
-  } else if (nav.userAgent.indexOf("Safari") > -1) {
+  }
+  // Check for Safari (but not if it contains Chrome, as Chrome also has Safari in user agent)
+  else if (
+    nav.userAgent.indexOf("Safari") > -1 &&
+    nav.userAgent.indexOf("Chrome") === -1
+  ) {
     browserName = "Safari";
     const match = nav.userAgent.match(/Version\/(\d+\.\d+)/);
-    if (match) browserVersion = match[1];
-  } else if (nav.userAgent.indexOf("Edge") > -1) {
-    browserName = "Edge";
-    const match = nav.userAgent.match(/Edge\/(\d+\.\d+)/);
     if (match) browserVersion = match[1];
   }
 
@@ -335,8 +352,11 @@ async function logPhoneOS() {
             <button onclick="logPhoneOS()" style="background: #007cba; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 10px;">
               🔄 Refresh Detection
             </button>
-            <button onclick="copyToClipboard()" style="background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+            <button onclick="copyToClipboard()" style="background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 10px;">
               📋 Copy Data
+            </button>
+            <button onclick="clearCache()" style="background: #dc3545; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+              🗑️ Clear Cache & Reload
             </button>
           </div>
         </div>
@@ -364,6 +384,18 @@ async function logPhoneOS() {
 
     return null;
   }
+}
+
+// Function to clear cache and force fresh detection
+function clearCache() {
+  // Clear any stored data
+  if (typeof Storage !== "undefined") {
+    localStorage.removeItem("deviceInfo");
+    sessionStorage.removeItem("deviceInfo");
+  }
+
+  // Force reload without cache
+  location.reload(true);
 }
 
 // Function to copy device information to clipboard
@@ -440,6 +472,7 @@ window.logPhoneOS = logPhoneOS;
 window.detectPhoneOS = detectPhoneOS;
 window.getDeviceInfo = getDeviceInfo;
 window.copyToClipboard = copyToClipboard;
+window.clearCache = clearCache;
 
 // Run the detection when the page loads
 document.addEventListener("DOMContentLoaded", () => {
