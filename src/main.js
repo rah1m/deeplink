@@ -15,30 +15,30 @@ function detectDevice() {
   return "other";
 }
 
-function getPathname() {
-  // Get the current pathname, removing the leading slash
-  const pathname = window.location.pathname.slice(1);
-  return pathname || "";
+function getQueryParams() {
+  // Get the current query string
+  const queryString = window.location.search;
+  return queryString || "";
 }
 
 function redirectBasedOnDevice() {
   const device = detectDevice();
-  const pathname = getPathname();
+  const queryParams = getQueryParams();
   const MY_LINK = "https://your-domain.com"; // Replace with your actual domain
 
-  console.log(`Detected device: ${device}, pathname: ${pathname}`);
+  console.log(`Detected device: ${device}, query params: ${queryParams}`);
 
   switch (device) {
     case "ios":
-      // Redirect to iOS deep link path
-      const iosUrl = `${MY_LINK}/.well-known/assetlinks.json/${pathname}`;
+      // Redirect to iOS deep link path with query params
+      const iosUrl = `${MY_LINK}/.well-known/assetlinks.json${queryParams}`;
       console.log(`Redirecting iOS to: ${iosUrl}`);
       window.location.href = iosUrl;
       break;
 
     case "android":
-      // Redirect to Android deep link path
-      const androidUrl = `${MY_LINK}/.pathfor-android/${pathname}`;
+      // Redirect to Android deep link path with query params
+      const androidUrl = `${MY_LINK}/.pathfor-android${queryParams}`;
       console.log(`Redirecting Android to: ${androidUrl}`);
       window.location.href = androidUrl;
       break;
@@ -51,7 +51,7 @@ function redirectBasedOnDevice() {
           <h2>Deep Link Handler</h2>
           <p>This page handles deep links for mobile devices.</p>
           <p>Device: ${device}</p>
-          <p>Pathname: ${pathname}</p>
+          <p>Query Params: ${queryParams}</p>
           <p>Please visit this link on a mobile device to be redirected appropriately.</p>
         </div>
       `;
