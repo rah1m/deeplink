@@ -24,7 +24,7 @@ function getQueryParams() {
 function redirectBasedOnDevice() {
   const device = detectDevice();
   const queryParams = getQueryParams();
-  const MY_LINK = "https://your-domain.com"; // Replace with your actual domain
+  const MY_LINK = "https://yelo.az"; // Replace with your actual domain
 
   console.log(`Detected device: ${device}, query params: ${queryParams}`);
 
