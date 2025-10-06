@@ -66,7 +66,7 @@ const apps = {
     name: "Instagram",
   },
   nar: {
-    deepLink: "http://az.azerconnect.nar//",
+    deepLink: "az.azerconnect.nar://",
     androidStore:
       "https://play.google.com/store/apps/details?id=com.azerconnect.nar",
     iosStore: "https://apps.apple.com/us/app/nar/id6444889671",
