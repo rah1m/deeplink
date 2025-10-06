@@ -61,7 +61,6 @@ function initializeDemo() {
     </div>
   `;
 }
-
 // Global test function
 window.testApp = async function (appName) {
   const result = await detectApp(appName);
