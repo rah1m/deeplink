@@ -539,6 +539,49 @@ h1 {
   font-weight: 600;
 }
 
+.config-info {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.config-info p {
+  margin: 0.5rem 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.config-info strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+.toggle-logging-btn {
+  background: linear-gradient(135deg, #ffa726 0%, #ff7043 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+  box-shadow: 0 2px 10px rgba(255, 167, 38, 0.3);
+}
+
+.toggle-logging-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(255, 167, 38, 0.4);
+  background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+}
+
+.toggle-logging-btn:active {
+  transform: translateY(0);
+}
+
 .app-buttons {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -827,6 +870,19 @@ h1 {
   }
 
   .device-info strong {
+    color: #333;
+  }
+
+  .config-info {
+    background: rgba(255, 255, 255, 0.7);
+    color: #333;
+  }
+
+  .config-info p {
+    color: #555;
+  }
+
+  .config-info strong {
     color: #333;
   }
 

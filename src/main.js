@@ -6,7 +6,32 @@
 class MobileAppDetector {
   constructor() {
     this.detectionResults = new Map();
-    this.timeoutDuration = 2500; // 2.5 seconds timeout for detection
+    this.timeoutDuration = 5000; // 5 seconds timeout for detection
+    this.enableLogging = true; // Enable detailed logging
+  }
+
+  /**
+   * Log messages with timestamp
+   * @param {string} level - Log level (info, warn, error)
+   * @param {string} message - Log message
+   * @param {*} data - Additional data to log
+   */
+  log(level, message, data = null) {
+    if (!this.enableLogging) return;
+
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+
+    switch (level) {
+      case "error":
+        console.error(logMessage, data || "");
+        break;
+      case "warn":
+        console.warn(logMessage, data || "");
+        break;
+      default:
+        console.log(logMessage, data || "");
+    }
   }
 
   /**
@@ -23,31 +48,62 @@ class MobileAppDetector {
     const { appName, iosScheme, androidScheme, androidPackage, fallbackUrl } =
       config;
 
+    this.log("info", `Starting detection for ${appName}`, config);
+
     const deviceInfo = this.getDeviceInfo();
+    this.log("info", `Device info detected`, deviceInfo);
+
     let detectionMethod = "";
     let isInstalled = false;
+    const startTime = Date.now();
 
     try {
       if (deviceInfo.isIOS && iosScheme) {
         detectionMethod = "iOS URL Scheme";
+        this.log(
+          "info",
+          `Using iOS detection method for ${appName} with scheme: ${iosScheme}`
+        );
         isInstalled = await this.detectIOSApp(iosScheme);
       } else if (deviceInfo.isAndroid && (androidScheme || androidPackage)) {
         detectionMethod = "Android Intent/Scheme";
+        this.log("info", `Using Android detection method for ${appName}`, {
+          androidScheme,
+          androidPackage,
+        });
         isInstalled = await this.detectAndroidApp(
           androidScheme,
           androidPackage
         );
       } else if (deviceInfo.isMobile) {
         detectionMethod = "Generic Mobile Detection";
-        isInstalled = await this.detectGenericMobile(
-          iosScheme || androidScheme
+        const scheme = iosScheme || androidScheme;
+        this.log(
+          "info",
+          `Using generic mobile detection for ${appName} with scheme: ${scheme}`
         );
+        isInstalled = await this.detectGenericMobile(scheme);
       } else {
         detectionMethod = "Desktop/Unsupported";
+        this.log(
+          "info",
+          `Desktop/unsupported platform detected for ${appName}`
+        );
         isInstalled = false;
       }
+
+      const detectionTime = Date.now() - startTime;
+      this.log("info", `Detection completed for ${appName}`, {
+        isInstalled,
+        detectionMethod,
+        detectionTime: `${detectionTime}ms`,
+      });
     } catch (error) {
-      console.warn(`App detection failed for ${appName}:`, error);
+      const detectionTime = Date.now() - startTime;
+      this.log("error", `App detection failed for ${appName}`, {
+        error: error.message,
+        detectionTime: `${detectionTime}ms`,
+      });
       isInstalled = false;
     }
 
@@ -70,10 +126,22 @@ class MobileAppDetector {
    * @returns {Promise<boolean>} Whether the app is installed
    */
   async detectIOSApp(scheme) {
+    this.log("info", `Starting iOS detection with scheme: ${scheme}`);
+
     return new Promise((resolve) => {
       const startTime = Date.now();
+      let resolved = false;
+
       const timeout = setTimeout(() => {
-        resolve(false);
+        if (!resolved) {
+          resolved = true;
+          const timeElapsed = Date.now() - startTime;
+          this.log(
+            "info",
+            `iOS detection timeout reached after ${timeElapsed}ms - app likely not installed`
+          );
+          resolve(false);
+        }
       }, this.timeoutDuration);
 
       // Create a hidden iframe to test the scheme
@@ -81,32 +149,45 @@ class MobileAppDetector {
       iframe.style.display = "none";
       iframe.src = scheme;
 
+      this.log("info", `Created iframe for iOS detection with src: ${scheme}`);
       document.body.appendChild(iframe);
 
       // Check if we're still on the page after attempting to open the scheme
       const checkInstallation = () => {
         const timeElapsed = Date.now() - startTime;
-        if (timeElapsed < this.timeoutDuration) {
+        if (timeElapsed < this.timeoutDuration && !resolved) {
           if (document.hidden || document.webkitHidden) {
             // App likely opened (page became hidden)
+            resolved = true;
+            const detectionTime = Date.now() - startTime;
+            this.log(
+              "info",
+              `iOS app detected - page became hidden after ${detectionTime}ms`
+            );
             clearTimeout(timeout);
-            document.body.removeChild(iframe);
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
             resolve(true);
           } else {
-            setTimeout(checkInstallation, 100);
+            setTimeout(checkInstallation, 200); // Increased check interval
           }
         }
       };
 
+      // Start checking after a brief delay
       setTimeout(() => {
+        this.log("info", `Starting iOS visibility checks`);
         checkInstallation();
-        // Cleanup
+
+        // Cleanup iframe after detection period
         setTimeout(() => {
           if (document.body.contains(iframe)) {
+            this.log("info", `Cleaning up iOS detection iframe`);
             document.body.removeChild(iframe);
           }
-        }, 100);
-      }, 100);
+        }, 500); // Increased cleanup delay
+      }, 300); // Increased initial delay
     });
   }
 
@@ -117,6 +198,8 @@ class MobileAppDetector {
    * @returns {Promise<boolean>} Whether the app is installed
    */
   async detectAndroidApp(scheme, packageName) {
+    this.log("info", `Starting Android detection`, { scheme, packageName });
+
     return new Promise((resolve) => {
       const startTime = Date.now();
       let resolved = false;
@@ -124,6 +207,11 @@ class MobileAppDetector {
       const timeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
+          const timeElapsed = Date.now() - startTime;
+          this.log(
+            "info",
+            `Android detection timeout reached after ${timeElapsed}ms - app likely not installed`
+          );
           resolve(false);
         }
       }, this.timeoutDuration);
@@ -131,18 +219,30 @@ class MobileAppDetector {
       // Method 1: Try intent URL if package name is provided
       if (packageName) {
         const intentUrl = `intent://launch#Intent;package=${packageName};end`;
+        this.log("info", `Trying Android intent URL: ${intentUrl}`);
+
         try {
           window.location.href = intentUrl;
 
           setTimeout(() => {
             if (!resolved && (document.hidden || document.webkitHidden)) {
               resolved = true;
+              const detectionTime = Date.now() - startTime;
+              this.log(
+                "info",
+                `Android app detected via intent - page became hidden after ${detectionTime}ms`
+              );
               clearTimeout(timeout);
               resolve(true);
+            } else if (!resolved) {
+              this.log(
+                "info",
+                `Intent method did not trigger app launch, page still visible`
+              );
             }
-          }, 1000);
+          }, 1500); // Increased delay for intent detection
         } catch (error) {
-          console.warn("Intent URL failed:", error);
+          this.log("warn", `Intent URL failed`, { error: error.message });
         }
       }
 
@@ -150,6 +250,7 @@ class MobileAppDetector {
       if (scheme && !resolved) {
         setTimeout(() => {
           if (!resolved) {
+            this.log("info", `Trying Android custom scheme: ${scheme}`);
             try {
               const iframe = document.createElement("iframe");
               iframe.style.display = "none";
@@ -159,18 +260,32 @@ class MobileAppDetector {
               setTimeout(() => {
                 if (!resolved && (document.hidden || document.webkitHidden)) {
                   resolved = true;
+                  const detectionTime = Date.now() - startTime;
+                  this.log(
+                    "info",
+                    `Android app detected via scheme - page became hidden after ${detectionTime}ms`
+                  );
                   clearTimeout(timeout);
                   resolve(true);
+                } else if (!resolved) {
+                  this.log(
+                    "info",
+                    `Scheme method did not trigger app launch, page still visible`
+                  );
                 }
+
                 if (document.body.contains(iframe)) {
+                  this.log("info", `Cleaning up Android detection iframe`);
                   document.body.removeChild(iframe);
                 }
-              }, 1000);
+              }, 1500); // Increased delay for scheme detection
             } catch (error) {
-              console.warn("Scheme detection failed:", error);
+              this.log("warn", `Scheme detection failed`, {
+                error: error.message,
+              });
             }
           }
-        }, 500);
+        }, 1000); // Increased delay before trying scheme method
       }
     });
   }
@@ -181,11 +296,31 @@ class MobileAppDetector {
    * @returns {Promise<boolean>} Whether the app might be installed
    */
   async detectGenericMobile(scheme) {
-    if (!scheme) return false;
+    if (!scheme) {
+      this.log("warn", `Generic mobile detection called without scheme`);
+      return false;
+    }
+
+    this.log(
+      "info",
+      `Starting generic mobile detection with scheme: ${scheme}`
+    );
 
     return new Promise((resolve) => {
       const startTime = Date.now();
-      const timeout = setTimeout(() => resolve(false), this.timeoutDuration);
+      let resolved = false;
+
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          const timeElapsed = Date.now() - startTime;
+          this.log(
+            "info",
+            `Generic mobile detection timeout reached after ${timeElapsed}ms - app likely not installed`
+          );
+          resolve(false);
+        }
+      }, this.timeoutDuration);
 
       try {
         // Try to open the scheme
@@ -193,21 +328,41 @@ class MobileAppDetector {
         link.href = scheme;
         link.style.display = "none";
         document.body.appendChild(link);
+
+        this.log(
+          "info",
+          `Created link element for generic detection, clicking...`
+        );
         link.click();
         document.body.removeChild(link);
 
         // Check if page becomes hidden (app opened)
         const checkVisibility = () => {
-          if (document.hidden || document.webkitHidden) {
-            clearTimeout(timeout);
-            resolve(true);
-          } else if (Date.now() - startTime < this.timeoutDuration) {
-            setTimeout(checkVisibility, 100);
+          const timeElapsed = Date.now() - startTime;
+          if (!resolved) {
+            if (document.hidden || document.webkitHidden) {
+              resolved = true;
+              this.log(
+                "info",
+                `Generic mobile app detected - page became hidden after ${timeElapsed}ms`
+              );
+              clearTimeout(timeout);
+              resolve(true);
+            } else if (timeElapsed < this.timeoutDuration) {
+              setTimeout(checkVisibility, 200); // Increased check interval
+            }
           }
         };
 
-        setTimeout(checkVisibility, 500);
+        setTimeout(() => {
+          this.log("info", `Starting generic mobile visibility checks`);
+          checkVisibility();
+        }, 800); // Increased initial delay
       } catch (error) {
+        resolved = true;
+        this.log("error", `Generic mobile detection failed`, {
+          error: error.message,
+        });
         clearTimeout(timeout);
         resolve(false);
       }
@@ -247,7 +402,29 @@ class MobileAppDetector {
    * Clear detection results
    */
   clearResults() {
+    this.log("info", "Clearing all detection results");
     this.detectionResults.clear();
+  }
+
+  /**
+   * Enable or disable logging
+   * @param {boolean} enabled - Whether to enable logging
+   */
+  setLogging(enabled) {
+    this.enableLogging = enabled;
+    this.log("info", `Logging ${enabled ? "enabled" : "disabled"}`);
+  }
+
+  /**
+   * Get current configuration
+   * @returns {Object} Current configuration
+   */
+  getConfig() {
+    return {
+      timeoutDuration: this.timeoutDuration,
+      enableLogging: this.enableLogging,
+      resultsCacheSize: this.detectionResults.size,
+    };
   }
 
   /**
@@ -256,13 +433,31 @@ class MobileAppDetector {
    * @returns {Promise<Array>} Array of detection results
    */
   async detectMultipleApps(appConfigs) {
+    this.log("info", `Starting batch detection for ${appConfigs.length} apps`);
+
     const results = [];
-    for (const config of appConfigs) {
+    for (let i = 0; i < appConfigs.length; i++) {
+      const config = appConfigs[i];
+      this.log(
+        "info",
+        `Processing app ${i + 1}/${appConfigs.length}: ${config.appName}`
+      );
+
       const result = await this.detectApp(config);
       results.push(result);
-      // Small delay between detections to avoid conflicts
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Increased delay between detections to avoid conflicts
+      if (i < appConfigs.length - 1) {
+        this.log("info", `Waiting 1 second before next detection...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     }
+
+    this.log("info", `Batch detection completed`, {
+      totalApps: appConfigs.length,
+      installedApps: results.filter((r) => r.isInstalled).length,
+    });
+
     return results;
   }
 }
@@ -308,13 +503,13 @@ const demoApps = [
 async function testAppDetection(appName) {
   const app = demoApps.find((a) => a.appName === appName);
   if (!app) {
-    console.error(`App ${appName} not found in demo apps`);
+    appDetector.log("error", `App ${appName} not found in demo apps`);
     return null;
   }
 
-  console.log(`Testing ${appName} detection...`);
+  appDetector.log("info", `=== Starting demo test for ${appName} ===`);
   const result = await appDetector.detectApp(app);
-  console.log(`${appName} detection result:`, result);
+  appDetector.log("info", `=== Demo test completed for ${appName} ===`, result);
 
   return result;
 }
@@ -323,9 +518,13 @@ async function testAppDetection(appName) {
  * Test all demo apps
  */
 async function testAllApps() {
-  console.log("Testing all demo apps...");
+  appDetector.log("info", "=== Starting demo test for ALL apps ===");
   const results = await appDetector.detectMultipleApps(demoApps);
-  console.log("All detection results:", results);
+  appDetector.log("info", "=== Demo test completed for ALL apps ===", {
+    totalTested: results.length,
+    installed: results.filter((r) => r.isInstalled).map((r) => r.appName),
+    notInstalled: results.filter((r) => !r.isInstalled).map((r) => r.appName),
+  });
   return results;
 }
 
@@ -343,22 +542,31 @@ function initializeDemo() {
         <div id="deviceInfo"></div>
       </div>
 
-      <div class="detection-controls">
-        <h2>Test App Detection</h2>
-        <div class="app-buttons">
-          ${demoApps
-            .map(
-              (app) => `
+        <div class="detection-controls">
+          <h2>Test App Detection</h2>
+          <div class="config-info">
+            <p><strong>Timeout:</strong> ${appDetector.timeoutDuration}ms</p>
+            <p><strong>Logging:</strong> <span id="loggingStatus">${
+              appDetector.enableLogging ? "Enabled" : "Disabled"
+            }</span></p>
+            <button onclick="toggleLogging()" class="toggle-logging-btn" id="toggleLoggingBtn">
+              ${appDetector.enableLogging ? "Disable" : "Enable"} Logging
+            </button>
+          </div>
+          <div class="app-buttons">
+            ${demoApps
+              .map(
+                (app) => `
             <button onclick="testSingleApp('${app.appName}')" class="app-btn">
               Test ${app.appName}
             </button>
           `
-            )
-            .join("")}
+              )
+              .join("")}
+          </div>
+          <button onclick="testAllAppsDemo()" class="test-all-btn">Test All Apps</button>
+          <button onclick="clearResults()" class="clear-btn">Clear Results</button>
         </div>
-        <button onclick="testAllAppsDemo()" class="test-all-btn">Test All Apps</button>
-        <button onclick="clearResults()" class="clear-btn">Clear Results</button>
-      </div>
 
       <div class="results">
         <h2>Detection Results</h2>
@@ -393,6 +601,23 @@ window.testAllAppsDemo = async function testAllAppsDemo() {
 window.clearResults = function clearResults() {
   appDetector.clearResults();
   updateResults();
+};
+
+window.toggleLogging = function toggleLogging() {
+  const newState = !appDetector.enableLogging;
+  appDetector.setLogging(newState);
+
+  // Update UI
+  const statusSpan = document.getElementById("loggingStatus");
+  const toggleBtn = document.getElementById("toggleLoggingBtn");
+
+  if (statusSpan) {
+    statusSpan.textContent = newState ? "Enabled" : "Disabled";
+  }
+
+  if (toggleBtn) {
+    toggleBtn.textContent = newState ? "Disable Logging" : "Enable Logging";
+  }
 };
 
 function updateResults() {
