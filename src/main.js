@@ -379,21 +379,21 @@ function initializeDemo() {
   `;
 }
 
-// Demo interface functions
-async function testSingleApp(appName) {
+// Demo interface functions - make them globally accessible
+window.testSingleApp = async function testSingleApp(appName) {
   const result = await testAppDetection(appName);
   updateResults();
-}
+};
 
-async function testAllAppsDemo() {
+window.testAllAppsDemo = async function testAllAppsDemo() {
   await testAllApps();
   updateResults();
-}
+};
 
-function clearResults() {
+window.clearResults = function clearResults() {
   appDetector.clearResults();
   updateResults();
-}
+};
 
 function updateResults() {
   const resultsDiv = document.getElementById("results");
