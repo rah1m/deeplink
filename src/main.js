@@ -1,27 +1,70 @@
 function openAppOrStore(deepLink, androidStoreLink, iosStoreLink, appName) {
   const isAndroid = /Android/i.test(navigator.userAgent);
   const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isSafari =
+    /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
   const statusDiv = document.getElementById("status");
 
   if (isiOS || isAndroid) {
     statusDiv.innerHTML = `<p class="status-message">Attempting to open ${appName}...</p>`;
 
-    const fallbackTimeout = setTimeout(() => {
-      statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
-      if (isiOS) {
-        window.location.href = iosStoreLink;
-      } else if (isAndroid) {
-        window.location.href = androidStoreLink;
-      }
-    }, 250); // Adjust timeout as needed
+    // Safari requires a different approach
+    if (isSafari && isiOS) {
+      // For Safari on iOS, use iframe method which is more reliable
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = deepLink;
+      document.body.appendChild(iframe);
 
-    window.location.href = deepLink;
+      const startTime = Date.now();
+      let hasRedirected = false;
 
-    // Clear timeout if the app opens successfully (not always reliable, but a common practice)
-    window.addEventListener("blur", () => {
-      clearTimeout(fallbackTimeout);
-      statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
-    });
+      // Set a longer timeout for Safari
+      const fallbackTimeout = setTimeout(() => {
+        if (!hasRedirected) {
+          statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
+          window.location.href = iosStoreLink;
+          hasRedirected = true;
+        }
+      }, 3000);
+
+      // Listen for page visibility changes
+      const visibilityHandler = () => {
+        if (document.visibilityState === "hidden") {
+          clearTimeout(fallbackTimeout);
+          statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
+          hasRedirected = true;
+        }
+      };
+
+      document.addEventListener("visibilitychange", visibilityHandler);
+
+      // Clean up iframe after timeout
+      setTimeout(() => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+        document.removeEventListener("visibilitychange", visibilityHandler);
+      }, 4000);
+    } else {
+      // Standard approach for Chrome, Firefox, and Android
+      const fallbackTimeout = setTimeout(() => {
+        statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
+        if (isiOS) {
+          window.location.href = iosStoreLink;
+        } else if (isAndroid) {
+          window.location.href = androidStoreLink;
+        }
+      }, 250);
+
+      window.location.href = deepLink;
+
+      // Clear timeout if the app opens successfully
+      window.addEventListener("blur", () => {
+        clearTimeout(fallbackTimeout);
+        statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
+      });
+    }
   } else {
     // Handle desktop or other platforms
     statusDiv.innerHTML = `<p class="status-message info">This feature works on mobile devices only. Your device: ${
