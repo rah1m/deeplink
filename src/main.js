@@ -1,59 +1,95 @@
-function tryOpenApp(scheme, { timeout = 1500, openMethod = "href" } = {}) {
-  return new Promise((resolve) => {
-    let done = false;
+function openAppOrStore(deepLink, androidStoreLink, iosStoreLink, appName) {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const statusDiv = document.getElementById("status");
 
-    const finish = (value) => {
-      if (done) return;
-      done = true;
-      cleanup();
-      resolve(value);
-    };
+  if (isiOS || isAndroid) {
+    statusDiv.innerHTML = `<p class="status-message">Attempting to open ${appName}...</p>`;
 
-    const onHide = () => finish(true); // likely switched to the app
-    const onBlur = () => {
-      // Some browsers fire blur instead of visibilitychange
-      if (document.visibilityState === "hidden") finish(true);
-    };
+    const fallbackTimeout = setTimeout(() => {
+      statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
+      if (isiOS) {
+        window.location.href = iosStoreLink;
+      } else if (isAndroid) {
+        window.location.href = androidStoreLink;
+      }
+    }, 250); // Adjust timeout as needed
 
-    const cleanup = () => {
-      document.removeEventListener("visibilitychange", onHide, true);
-      window.removeEventListener("pagehide", onHide, true);
-      window.removeEventListener("blur", onBlur, true);
-      clearTimeout(t);
-    };
+    window.location.href = deepLink;
 
-    document.addEventListener("visibilitychange", onHide, true);
-    window.addEventListener("pagehide", onHide, true);
-    window.addEventListener("blur", onBlur, true);
-
-    const t = setTimeout(() => finish(false), timeout);
-
-    // Attempt launch
-    if (openMethod === "iframe") {
-      const iframe = document.createElement("iframe");
-      iframe.style.display = "none";
-      iframe.src = scheme;
-      document.body.appendChild(iframe);
-      // Remove after a bit to avoid leaks
-      setTimeout(() => iframe.remove(), timeout + 500);
-    } else {
-      // Safer across iOS/Android
-      window.location.href = scheme;
-    }
-  });
-}
-
-// Example usage with fallback to store if not installed
-async function openOrStore() {
-  const installed = await tryOpenApp("whatsapp://", { timeout: 1600 });
-  if (!installed) {
-    // Android Play Store
-    // location.href = 'https://play.google.com/store/apps/details?id=com.whatsapp';
-    // iOS App Store
-    location.href = "https://apps.apple.com/app/whatsapp-messenger/id310633997";
+    // Clear timeout if the app opens successfully (not always reliable, but a common practice)
+    window.addEventListener("blur", () => {
+      clearTimeout(fallbackTimeout);
+      statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
+    });
+  } else {
+    // Handle desktop or other platforms
+    statusDiv.innerHTML = `<p class="status-message info">This feature works on mobile devices only. Your device: ${
+      navigator.userAgent.split(" ")[0]
+    }</p>`;
+    console.log("Not a mobile device.");
   }
 }
-if (navigator.getInstalledRelatedApps) {
-  const apps = await navigator.getInstalledRelatedApps(); // only your related PWAs
-  console.log(apps);
-}
+
+// App configurations
+const apps = {
+  whatsapp: {
+    deepLink: "whatsapp://",
+    androidStore: "https://play.google.com/store/apps/details?id=com.whatsapp",
+    iosStore: "https://apps.apple.com/app/whatsapp-messenger/id310633997",
+    name: "WhatsApp",
+  },
+  telegram: {
+    deepLink: "tg://",
+    androidStore:
+      "https://play.google.com/store/apps/details?id=org.telegram.messenger",
+    iosStore: "https://apps.apple.com/app/telegram/id686449807",
+    name: "Telegram",
+  },
+  instagram: {
+    deepLink: "instagram://",
+    androidStore:
+      "https://play.google.com/store/apps/details?id=com.instagram.android",
+    iosStore: "https://apps.apple.com/app/instagram/id389801252",
+    name: "Instagram",
+  },
+};
+
+// Set up event listeners when DOM is loaded
+document.addEventListener("DOMContentLoaded", function () {
+  // WhatsApp button
+  document
+    .getElementById("whatsapp-btn")
+    .addEventListener("click", function () {
+      openAppOrStore(
+        apps.whatsapp.deepLink,
+        apps.whatsapp.androidStore,
+        apps.whatsapp.iosStore,
+        apps.whatsapp.name
+      );
+    });
+
+  // Telegram button
+  document
+    .getElementById("telegram-btn")
+    .addEventListener("click", function () {
+      openAppOrStore(
+        apps.telegram.deepLink,
+        apps.telegram.androidStore,
+        apps.telegram.iosStore,
+        apps.telegram.name
+      );
+    });
+
+  // Instagram button
+  document
+    .getElementById("instagram-btn")
+    .addEventListener("click", function () {
+      openAppOrStore(
+        apps.instagram.deepLink,
+        apps.instagram.androidStore,
+        apps.instagram.iosStore,
+        apps.instagram.name
+      );
+    });
+});

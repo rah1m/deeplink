@@ -9,7 +9,49 @@
     <title>Deep Link Handler</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="container">
+        <h1>Deep Link Handler</h1>
+        <p class="description">
+          Test opening mobile apps with fallback to app stores
+        </p>
+
+        <div class="app-section">
+          <h2>WhatsApp</h2>
+          <button id="whatsapp-btn" class="app-button whatsapp">
+            <span class="app-icon">📱</span>
+            Open WhatsApp
+          </button>
+        </div>
+
+        <div class="app-section">
+          <h2>Telegram</h2>
+          <button id="telegram-btn" class="app-button telegram">
+            <span class="app-icon">✈️</span>
+            Open Telegram
+          </button>
+        </div>
+
+        <div class="app-section">
+          <h2>Instagram</h2>
+          <button id="instagram-btn" class="app-button instagram">
+            <span class="app-icon">📷</span>
+            Open Instagram
+          </button>
+        </div>
+
+        <div class="info">
+          <h3>How it works:</h3>
+          <ul>
+            <li>On mobile devices, attempts to open the app</li>
+            <li>If app is not installed, redirects to the app store</li>
+            <li>On desktop, shows a message</li>
+          </ul>
+        </div>
+
+        <div id="status" class="status"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
