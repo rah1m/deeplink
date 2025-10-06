@@ -1,70 +1,39 @@
 function openAppOrStore(deepLink, androidStoreLink, iosStoreLink, appName) {
   const isAndroid = /Android/i.test(navigator.userAgent);
   const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  console.log(
+    navigator.userAgent,
+    "navigator.userAgentnavigator.userAgentnavigator.userAgent"
+  );
+
   const isSafari =
     /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
   const statusDiv = document.getElementById("status");
 
-  if (isiOS || isAndroid) {
+  console.log(isSafari, "isSafari");
+  console.log(isiOS, "isiOS");
+  console.log(isAndroid, "isAndroid");
+
+  if (isiOS || isAndroid || isSafari) {
     statusDiv.innerHTML = `<p class="status-message">Attempting to open ${appName}...</p>`;
 
-    // Safari requires a different approach
-    if (isSafari && isiOS) {
-      // For Safari on iOS, use iframe method which is more reliable
-      const iframe = document.createElement("iframe");
-      iframe.style.display = "none";
-      iframe.src = deepLink;
-      document.body.appendChild(iframe);
+    // Standard approach for Chrome, Firefox, and Android
+    const fallbackTimeout = setTimeout(() => {
+      statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
+      if (isiOS || isSafari) {
+        window.location.href = iosStoreLink;
+      } else if (isAndroid) {
+        window.location.href = androidStoreLink;
+      }
+    }, 250);
 
-      const startTime = Date.now();
-      let hasRedirected = false;
+    window.location.href = deepLink;
 
-      // Set a longer timeout for Safari
-      const fallbackTimeout = setTimeout(() => {
-        if (!hasRedirected) {
-          statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
-          window.location.href = iosStoreLink;
-          hasRedirected = true;
-        }
-      }, 3000);
-
-      // Listen for page visibility changes
-      const visibilityHandler = () => {
-        if (document.visibilityState === "hidden") {
-          clearTimeout(fallbackTimeout);
-          statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
-          hasRedirected = true;
-        }
-      };
-
-      document.addEventListener("visibilitychange", visibilityHandler);
-
-      // Clean up iframe after timeout
-      setTimeout(() => {
-        if (iframe.parentNode) {
-          iframe.parentNode.removeChild(iframe);
-        }
-        document.removeEventListener("visibilitychange", visibilityHandler);
-      }, 4000);
-    } else {
-      // Standard approach for Chrome, Firefox, and Android
-      const fallbackTimeout = setTimeout(() => {
-        statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
-        if (isiOS) {
-          window.location.href = iosStoreLink;
-        } else if (isAndroid) {
-          window.location.href = androidStoreLink;
-        }
-      }, 250);
-
-      window.location.href = deepLink;
-
-      // Clear timeout if the app opens successfully
-      window.addEventListener("blur", () => {
-        clearTimeout(fallbackTimeout);
-        statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
-      });
-    }
+    // Clear timeout if the app opens successfully
+    window.addEventListener("blur", () => {
+      clearTimeout(fallbackTimeout);
+      statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
+    });
   } else {
     // Handle desktop or other platforms
     statusDiv.innerHTML = `<p class="status-message info">This feature works on mobile devices only. Your device: ${
@@ -95,6 +64,13 @@ const apps = {
       "https://play.google.com/store/apps/details?id=com.instagram.android",
     iosStore: "https://apps.apple.com/app/instagram/id389801252",
     name: "Instagram",
+  },
+  nar: {
+    deepLink: "http://az.azerconnect.nar//",
+    androidStore:
+      "https://play.google.com/store/apps/details?id=com.azerconnect.nar",
+    iosStore: "https://apps.apple.com/us/app/nar/id6444889671",
+    name: "Nar",
   },
 };
 
@@ -135,4 +111,13 @@ document.addEventListener("DOMContentLoaded", function () {
         apps.instagram.name
       );
     });
+  // Nar button
+  document.getElementById("nar-btn").addEventListener("click", function () {
+    openAppOrStore(
+      apps.nar.deepLink,
+      apps.nar.androidStore,
+      apps.nar.iosStore,
+      apps.nar.name
+    );
+  });
 });
