@@ -18,22 +18,22 @@ function openAppOrStore(deepLink, androidStoreLink, iosStoreLink, appName) {
     statusDiv.innerHTML = `<p class="status-message">Attempting to open ${appName}...</p>`;
 
     // Standard approach for Chrome, Firefox, and Android
-    // const fallbackTimeout = setTimeout(() => {
-    //   statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
-    //   if (isiOS || isSafari) {
-    //     window.location.href = iosStoreLink;
-    //   } else if (isAndroid) {
-    //     window.location.href = androidStoreLink;
-    //   }
-    // }, 250);
+    const fallbackTimeout = setTimeout(() => {
+      statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
+      if (isiOS || isSafari) {
+        window.location.href = iosStoreLink;
+      } else if (isAndroid) {
+        window.location.href = androidStoreLink;
+      }
+    }, 250);
 
     window.location.href = deepLink;
 
     // Clear timeout if the app opens successfully
-    // window.addEventListener("blur", () => {
-    //   clearTimeout(fallbackTimeout);
-    //   statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
-    // });
+    window.addEventListener("blur", () => {
+      clearTimeout(fallbackTimeout);
+      statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
+    });
   } else {
     // Handle desktop or other platforms
     statusDiv.innerHTML = `<p class="status-message info">This feature works on mobile devices only. Your device: ${
