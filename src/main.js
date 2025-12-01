@@ -1,123 +1,109 @@
-function openAppOrStore(deepLink, androidStoreLink, iosStoreLink, appName) {
-  const isAndroid = /Android/i.test(navigator.userAgent);
-  const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  console.log(
-    navigator.userAgent,
-    "navigator.userAgentnavigator.userAgentnavigator.userAgent"
-  );
+const CONFIG = {
+  deepLink: "az.azerconnect.nar://",
+  androidPackage: "az.azerconnect.nar",
+  androidStore:
+    "https://play.google.com/store/apps/details?id=az.azerconnect.nar",
+  iosStore: "https://apps.apple.com/us/app/nar/id6444889671",
+  apiUrl: "https://app.nar.az/api/v1/loyalty-service/clipboards",
+};
 
-  const isSafari =
-    /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
-  const statusDiv = document.getElementById("status");
+const message = document.getElementById("message");
+const spinner = document.getElementById("spinner");
+const storeBtn = document.getElementById("storeBtn");
 
-  console.log(isSafari, "isSafari");
-  console.log(isiOS, "isiOS");
-  console.log(isAndroid, "isAndroid");
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isAndroid = /Android/.test(navigator.userAgent);
+const isMobile = isIOS || isAndroid;
 
-  if (isiOS || isAndroid || isSafari) {
-    statusDiv.innerHTML = `<p class="status-message">Attempting to open ${appName}...</p>`;
-
-    // Standard approach for Chrome, Firefox, and Android
-    const fallbackTimeout = setTimeout(() => {
-      statusDiv.innerHTML = `<p class="status-message warning">App not found, redirecting to store...</p>`;
-      if (isiOS || isSafari) {
-        window.location.href = iosStoreLink;
-      } else if (isAndroid) {
-        window.location.href = androidStoreLink;
-      }
-    }, 250);
-
-    window.location.href = deepLink;
-
-    // Clear timeout if the app opens successfully
-    window.addEventListener("blur", () => {
-      clearTimeout(fallbackTimeout);
-      statusDiv.innerHTML = `<p class="status-message success">Opening ${appName}...</p>`;
+async function sendToAPI() {
+  try {
+    await fetch(CONFIG.apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        link: window.location.href,
+      }),
     });
-  } else {
-    // Handle desktop or other platforms
-    statusDiv.innerHTML = `<p class="status-message info">This feature works on mobile devices only. Your device: ${
-      navigator.userAgent.split(" ")[0]
-    }</p>`;
-    console.log("Not a mobile device.");
+  } catch (error) {
+    console.log("API error:", error);
   }
 }
 
-// App configurations
-const apps = {
-  whatsapp: {
-    deepLink: "whatsapp://",
-    androidStore: "https://play.google.com/store/apps/details?id=com.whatsapp",
-    iosStore: "https://apps.apple.com/app/whatsapp-messenger/id310633997",
-    name: "WhatsApp",
-  },
-  telegram: {
-    deepLink: "tg://",
-    androidStore:
-      "https://play.google.com/store/apps/details?id=org.telegram.messenger",
-    iosStore: "https://apps.apple.com/app/telegram/id686449807",
-    name: "Telegram",
-  },
-  instagram: {
-    deepLink: "instagram://",
-    androidStore:
-      "https://play.google.com/store/apps/details?id=com.instagram.android",
-    iosStore: "https://apps.apple.com/app/instagram/id389801252",
-    name: "Instagram",
-  },
-  nar: {
-    deepLink: "az.azerconnect.nar://",
-    androidStore:
-      "https://play.google.com/store/apps/details?id=com.azerconnect.nar",
-    iosStore: "https://apps.apple.com/us/app/nar/id6444889671",
-    name: "Nar",
-  },
-};
+function openApp() {
+  return new Promise((resolve) => {
+    let opened = false;
 
-// Set up event listeners when DOM is loaded
-document.addEventListener("DOMContentLoaded", function () {
-  // WhatsApp button
-  document
-    .getElementById("whatsapp-btn")
-    .addEventListener("click", function () {
-      openAppOrStore(
-        apps.whatsapp.deepLink,
-        apps.whatsapp.androidStore,
-        apps.whatsapp.iosStore,
-        apps.whatsapp.name
-      );
-    });
+    const detectOpen = () => {
+      if (document.hidden || document.webkitHidden) {
+        opened = true;
+        resolve(true);
+      }
+    };
 
-  // Telegram button
-  document
-    .getElementById("telegram-btn")
-    .addEventListener("click", function () {
-      openAppOrStore(
-        apps.telegram.deepLink,
-        apps.telegram.androidStore,
-        apps.telegram.iosStore,
-        apps.telegram.name
-      );
-    });
+    document.addEventListener("visibilitychange", detectOpen);
+    window.addEventListener("pagehide", detectOpen);
 
-  // Instagram button
-  document
-    .getElementById("instagram-btn")
-    .addEventListener("click", function () {
-      openAppOrStore(
-        apps.instagram.deepLink,
-        apps.instagram.androidStore,
-        apps.instagram.iosStore,
-        apps.instagram.name
-      );
-    });
-  // Nar button
-  document.getElementById("nar-btn").addEventListener("click", function () {
-    openAppOrStore(
-      apps.nar.deepLink,
-      apps.nar.androidStore,
-      apps.nar.iosStore,
-      apps.nar.name
-    );
+    setTimeout(() => {
+      document.removeEventListener("visibilitychange", detectOpen);
+      window.removeEventListener("pagehide", detectOpen);
+      resolve(opened);
+    }, 2500);
+
+    if (isIOS) {
+      window.location.href = CONFIG.deepLink;
+    } else if (isAndroid) {
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = CONFIG.deepLink;
+      document.body.appendChild(iframe);
+
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }
   });
-});
+}
+
+function redirectToStore() {
+  const storeUrl = isIOS ? CONFIG.iosStore : CONFIG.androidStore;
+  window.location.href = storeUrl;
+}
+
+function showLoading(text) {
+  message.textContent = text;
+  spinner.classList.remove("hidden");
+  storeBtn.classList.add("hidden");
+}
+
+function showStore() {
+  message.textContent = "Tətbiq tapılmadı";
+  spinner.classList.add("hidden");
+  storeBtn.classList.remove("hidden");
+}
+
+function showDesktop() {
+  message.textContent = "Bu link mobil cihazlarda işləyir";
+  spinner.classList.add("hidden");
+}
+
+async function main() {
+  sendToAPI();
+
+  if (!isMobile) {
+    showDesktop();
+    return;
+  }
+
+  showLoading("Tətbiq açılır...");
+  const appOpened = await openApp();
+
+  if (!appOpened) {
+    showStore();
+
+    storeBtn.onclick = redirectToStore;
+
+    setTimeout(redirectToStore, 2000);
+  }
+}
+
+main();
