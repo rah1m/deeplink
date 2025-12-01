@@ -1,6 +1,6 @@
 const CONFIG = {
-  deepLink: "az.azerconnect.nar://",
-  androidPackage: "az.azerconnect.nar",
+  deepLink: "nar://",
+  androidPackage: "nar://",
   androidStore:
     "https://play.google.com/store/apps/details?id=az.azerconnect.nar",
   iosStore: "https://apps.apple.com/us/app/nar/id6444889671",
